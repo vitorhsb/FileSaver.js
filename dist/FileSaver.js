@@ -26,6 +26,50 @@
   // https://stackoverflow.com/q/3277182/1008999
   var _global = typeof window === 'object' && window.window === window ? window : typeof self === 'object' && self.self === self ? self : typeof global === 'object' && global.global === global ? global : void 0;
 
+  var popup;
+  var extensionMimeMap = {
+    "txt": "text/plain",
+    "htm": "text/html",
+    "html": "text/html",
+    "php": "text/html",
+    "css": "text/css",
+    "js": "application/javascript",
+    "json": "application/json",
+    "xml": "application/xml",
+    "swf": "application/x-shockwave-flash",
+    "flv": "video/x-flv",
+    "png": "image/png",
+    "jpe": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "jpg": "image/jpeg",
+    "gif": "image/gif",
+    "bmp": "image/bmp",
+    "ico": "image/vnd.microsoft.icon",
+    "tiff": "image/tiff",
+    "tif": "image/tiff",
+    "svg": "image/svg+xml",
+    "svgz": "image/svg+xml",
+    "zip": "application/zip",
+    "rar": "application/x-rar-compressed",
+    "exe": "application/x-msdownload",
+    "msi": "application/x-msdownload",
+    "cab": "application/vnd.ms-cab-compressed",
+    "mp3": "audio/mpeg",
+    "qt": "video/quicktime",
+    "mov": "video/quicktime",
+    "pdf": "application/pdf",
+    "psd": "image/vnd.adobe.photoshop",
+    "ai": "application/postscript",
+    "eps": "application/postscript",
+    "ps": "application/postscript",
+    "doc": "application/msword",
+    "rtf": "application/rtf",
+    "xls": "application/vnd.ms-excel",
+    "ppt": "application/vnd.ms-powerpoint",
+    "odt": "application/vnd.oasis.opendocument.text",
+    "ods": "application/vnd.oasis.opendocument.spreadsheet"
+  };
+
   function bom(blob, opts) {
     if (typeof opts === 'undefined') opts = {
       autoBom: false
@@ -48,11 +92,31 @@
 
   function download(url, name, opts) {
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', url);
-    xhr.responseType = 'blob';
+    xhr.open('GET', url, true);
+    xhr.responseType = 'arraybuffer';
 
     xhr.onload = function () {
-      saveAs(xhr.response, name, opts);
+      var type = xhr.getResponseHeader('Content-Type');
+
+      if (!type) {
+        type = 'application/octet-stream';
+
+        if (name) {
+          var tempExtension = name.split('.');
+          var extension = tempExtension[tempExtension.length - 1];
+
+          if (extension && extensionMimeMap[extension]) {
+            type = extensionMimeMap[extension];
+          }
+        }
+      }
+
+      var blob = typeof File === 'function' ? new File([xhr.response], name, {
+        type: type
+      }) : new Blob([xhr.response], {
+        type: type
+      });
+      saveAs(blob, name, opts);
     };
 
     xhr.onerror = function () {
@@ -137,7 +201,7 @@
       navigator.msSaveOrOpenBlob(bom(blob, opts), name);
     }
   } // Fallback to using FileReader and a popup
-  : function saveAs(blob, name, opts, popup) {
+  : function saveAs(blob, name, opts) {
     // Open a popup immediately do go around popup blocker
     // Mostly only available on user interaction and the fileReader is async so...
     popup = popup || open('', '_blank');
