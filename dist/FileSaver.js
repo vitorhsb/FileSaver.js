@@ -97,6 +97,7 @@
 
     xhr.onload = function () {
       var type = xhr.getResponseHeader('Content-Type');
+      var blob;
 
       if (!type) {
         type = 'application/octet-stream';
@@ -111,11 +112,23 @@
         }
       }
 
-      var blob = typeof File === 'function' ? new File([xhr.response], name, {
-        type: type
-      }) : new Blob([xhr.response], {
-        type: type
-      });
+      try {
+        blob = typeof File === 'function' ? new File([xhr.response], name, {
+          type: type
+        }) : new Blob([xhr.response], {
+          type: type
+        });
+      } catch (error) {
+        blob = new Blob([xhr.response], {
+          type: type
+        });
+      }
+
+      if (typeof window.navigator.msSaveBlob !== 'undefined') {
+        // IE workaround for "HTML7007: One or more blob URLs were revoked by closing the blob for which they were created. These URLs will no longer resolve as the data backing the URL has been freed."
+        return window.navigator.msSaveBlob(blob, name);
+      }
+
       saveAs(blob, name, opts);
     };
 
